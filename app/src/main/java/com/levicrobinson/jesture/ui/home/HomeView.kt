@@ -1,6 +1,8 @@
 package com.levicrobinson.jesture.ui.home
 
+import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -33,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.Dialog
@@ -41,6 +45,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.levicrobinson.jesture.R
 import com.levicrobinson.jesture.domain.model.Frame
 import com.levicrobinson.jesture.domain.model.Gesture
+import com.levicrobinson.jesture.ui.common.composables.EmptyStateView
+import com.levicrobinson.jesture.ui.common.composables.LoadingStateView
 import kotlin.random.Random
 
 @Composable
@@ -70,7 +76,7 @@ private fun SuccessView(
     modifier: Modifier = Modifier
 ) {
     var showAddGestureDialog by remember { mutableStateOf(false) }
-    Box {
+    Box (modifier = modifier) {
         GestureList(
             uiState = uiState,
             deleteGesture = deleteGesture
@@ -108,27 +114,36 @@ fun GestureList(
     deleteGesture: (Gesture) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.padding_medium)),
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = dimensionResource(R.dimen.padding_medium))
-    ) {
-        uiState.gestures?.let {
-            itemsIndexed(
-                items = uiState.gestures,
-                key = { index, gesture -> gesture.id }
-            ) { index, gesture ->
-                GestureCard(
-                    gesture = gesture,
-                    deleteGesture = deleteGesture,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateItem()
-                )
+    uiState.gestures?.let {
+        if (it.isNotEmpty()) {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.padding_medium)),
+                modifier = modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = dimensionResource(R.dimen.padding_medium))
+            ) {
+                itemsIndexed(
+                    items = uiState.gestures,
+                    key = { index, gesture -> gesture.id }
+                ) { index, gesture ->
+                    GestureCard(
+                        gesture = gesture,
+                        deleteGesture = deleteGesture,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .animateItem()
+                    )
+                }
             }
+        } else {
+            EmptyGesturesView(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = dimensionResource(R.dimen.padding_medium))
+            )
         }
     }
+
 }
 
 @Composable
@@ -137,9 +152,14 @@ private fun GestureCard(
     deleteGesture: (Gesture) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     Card(
         modifier = modifier
             .clip(RoundedCornerShape(dimensionResource(R.dimen.corner_rounded)))
+            .combinedClickable(
+                onClick = {},
+                onLongClick = { Toast.makeText(context, gesture.description, Toast.LENGTH_SHORT).show() }
+            )
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -152,9 +172,9 @@ private fun GestureCard(
         ) {
             Text(
                 gesture.name,
-                modifier = Modifier.weight(0.3f)
+                modifier = Modifier.weight(0.4f)
             )
-            Spacer(modifier = Modifier.weight(0.7f))
+            Spacer(modifier = Modifier.weight(0.6f))
             IconButton(
                 onClick = { deleteGesture(gesture) }
             ) {
@@ -240,10 +260,23 @@ private fun CreateGestureDialog(
 
 @Composable
 private fun ErrorView(modifier: Modifier = Modifier) {
-    Text("Error")
+    Text("Error", modifier = modifier)
 }
 
 @Composable
 private fun LoadingView(modifier: Modifier = Modifier) {
-    Text("Loading")
+    LoadingStateView(
+        descriptionTextRes = R.string.loading_gesture_list_description,
+        modifier = modifier
+    )
+}
+
+@Composable
+private fun EmptyGesturesView(modifier: Modifier = Modifier) {
+    EmptyStateView(
+        descriptionTextRes = R.string.empty_gesture_list_description,
+        iconImageVector = Icons.Default.Search,
+        iconContentDescriptionRes = R.string.no_gestures_found_content_description,
+        modifier = modifier
+    )
 }

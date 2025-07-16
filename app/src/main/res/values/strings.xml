@@ -2,4 +2,7 @@
     <string name="app_name">Jesture</string>
     <string name="add_gesture">Add Gesture</string>
     <string name="delete_gesture">Delete Gesture</string>
+    <string name="empty_gesture_list_description">No Gestures found.  You can add a new one by tapping the + button below.</string>
+    <string name="no_gestures_found_content_description">No Gestures Found</string>
+    <string name="loading_gesture_list_description">Loading Gestures…</string>
 </resources>

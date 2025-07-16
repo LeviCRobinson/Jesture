@@ -26,7 +26,7 @@ import kotlin.coroutines.cancellation.CancellationException
 
 sealed interface HomeViewUiState {
     data class Success(
-        val gestures: List<Gesture>? = emptyList()
+        val gestures: List<Gesture>? = null
     ): HomeViewUiState
     data object Error: HomeViewUiState
     data object Loading: HomeViewUiState
@@ -39,7 +39,7 @@ class HomeViewModel @Inject constructor(
     private val _uiState: MutableStateFlow<HomeViewUiState> = MutableStateFlow(HomeViewUiState.Loading)
     val uiState = _uiState.asStateFlow()
 
-    private var _gestures: MutableStateFlow<List<Gesture>?> = MutableStateFlow(emptyList())
+    private var _gestures: MutableStateFlow<List<Gesture>?> = MutableStateFlow(null)
     private var _searchString = mutableStateOf("")
 
     init {
@@ -53,14 +53,14 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val searchStringFlow = snapshotFlow { _searchString }.mapLatest { it }
-                if (_gestures.value?.isEmpty() == true) {
+                if (_gestures.value == null) {
                     fetchList()
                 }
                 combine(
                     _gestures,
                     searchStringFlow
                 ) { gestures, searchString ->
-                    if (gestures?.isEmpty() == true) {
+                    if(gestures == null) {
                         HomeViewUiState.Loading
                     } else {
                         HomeViewUiState.Success(

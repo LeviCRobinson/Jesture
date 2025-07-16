@@ -5,4 +5,6 @@
     <dimen name="corner_rounded">16dp</dimen>
     <dimen name="normal_card_height">60dp</dimen>
     <dimen name="padding_large">20dp</dimen>
+    <dimen name="full_screen_view_icon_size">120dp</dimen>
+    <dimen name="large_circular_indicator_size">48dp</dimen>
 </resources>
