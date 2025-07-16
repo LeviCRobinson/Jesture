@@ -26,17 +26,20 @@ import kotlin.coroutines.cancellation.CancellationException
 
 sealed interface HomeViewUiState {
     data class Success(
-        val gestures: List<Gesture>? = null
-    ): HomeViewUiState
-    data object Error: HomeViewUiState
-    data object Loading: HomeViewUiState
+        val gestures: List<Gesture>? = null,
+        val homeViewDialogType: HomeViewDialogType = HomeViewDialogType.NONE
+    ) : HomeViewUiState
+
+    data object Error : HomeViewUiState
+    data object Loading : HomeViewUiState
 }
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val gestureUseCases: GestureUseCases
 ) : ViewModel() {
-    private val _uiState: MutableStateFlow<HomeViewUiState> = MutableStateFlow(HomeViewUiState.Loading)
+    private val _uiState: MutableStateFlow<HomeViewUiState> =
+        MutableStateFlow(HomeViewUiState.Loading)
     val uiState = _uiState.asStateFlow()
 
     private var _gestures: MutableStateFlow<List<Gesture>?> = MutableStateFlow(null)
@@ -60,7 +63,7 @@ class HomeViewModel @Inject constructor(
                     _gestures,
                     searchStringFlow
                 ) { gestures, searchString ->
-                    if(gestures == null) {
+                    if (gestures == null) {
                         HomeViewUiState.Loading
                     } else {
                         HomeViewUiState.Success(
@@ -72,7 +75,7 @@ class HomeViewModel @Inject constructor(
                 }.onEmpty {
                     _uiState.value = HomeViewUiState.Success()
                 }.onCompletion {
-                    if(_uiState.value is HomeViewUiState.Loading) {
+                    if (_uiState.value is HomeViewUiState.Loading) {
                         _uiState.value = HomeViewUiState.Success()
                     }
                 }.catch { e ->
@@ -123,4 +126,18 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
+
+    fun updateDialogType(dialogType: HomeViewDialogType) {
+        val currentState = _uiState.value
+        if (currentState is HomeViewUiState.Success){
+            viewModelScope.launch {
+                _uiState.value = currentState.copy(homeViewDialogType = dialogType)
+            }
+        }
+
+    }
+}
+
+enum class HomeViewDialogType {
+    NONE, DELETE_GESTURE, CREATE_GESTURE
 }

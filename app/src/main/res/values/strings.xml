@@ -5,4 +5,7 @@
     <string name="empty_gesture_list_description">No Gestures found.  You can add a new one by tapping the + button below.</string>
     <string name="no_gestures_found_content_description">No Gestures Found</string>
     <string name="loading_gesture_list_description">Loading Gestures…</string>
+    <string name="confirm_button_text">Confirm</string>
+    <string name="dismiss_button_text">Dismiss</string>
+    <string name="delete_gesture_confirmation_description">Are you sure you want to delete the \"%1$s\" Gesture?</string>
 </resources>

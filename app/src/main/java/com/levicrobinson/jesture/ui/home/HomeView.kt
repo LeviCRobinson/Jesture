@@ -59,7 +59,8 @@ fun HomeView(
         is HomeViewUiState.Success -> SuccessView(
             uiState = uiState,
             deleteGesture = viewModel::deleteGesture,
-            submitGestureCreation = viewModel::submitGestureCreation
+            submitGestureCreation = viewModel::submitGestureCreation,
+            updateDialogType = viewModel::updateDialogType
         )
 
         HomeViewUiState.Error -> ErrorView(modifier = modifier.fillMaxSize())
@@ -73,13 +74,14 @@ private fun SuccessView(
     uiState: HomeViewUiState.Success,
     submitGestureCreation: (Gesture) -> Unit,
     deleteGesture: (Gesture) -> Unit,
+    updateDialogType: (HomeViewDialogType) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showAddGestureDialog by remember { mutableStateOf(false) }
-    Box (modifier = modifier) {
+    Box(modifier = modifier) {
         GestureList(
             uiState = uiState,
-            deleteGesture = deleteGesture
+            deleteGesture = deleteGesture,
+            updateDialogType = updateDialogType
         )
 
         Row(
@@ -88,7 +90,7 @@ private fun SuccessView(
         ) {
             Column {
                 FloatingActionButton(
-                    onClick = { showAddGestureDialog = !showAddGestureDialog }
+                    onClick = { updateDialogType(HomeViewDialogType.CREATE_GESTURE) }
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
@@ -100,9 +102,10 @@ private fun SuccessView(
             Spacer(Modifier.width(dimensionResource(R.dimen.padding_large)))
         }
     }
-    if (showAddGestureDialog) {
+
+    if (uiState.homeViewDialogType == HomeViewDialogType.CREATE_GESTURE) {
         CreateGestureDialog(
-            onDismiss = {showAddGestureDialog = false},
+            onDismiss = { updateDialogType(HomeViewDialogType.NONE) },
             onConfirm = submitGestureCreation
         )
     }
@@ -112,6 +115,7 @@ private fun SuccessView(
 fun GestureList(
     uiState: HomeViewUiState.Success,
     deleteGesture: (Gesture) -> Unit,
+    updateDialogType: (HomeViewDialogType) -> Unit,
     modifier: Modifier = Modifier
 ) {
     uiState.gestures?.let {
@@ -128,13 +132,21 @@ fun GestureList(
                 ) { index, gesture ->
                     GestureCard(
                         gesture = gesture,
-                        deleteGesture = deleteGesture,
+                        onDeleteClick = { updateDialogType(HomeViewDialogType.DELETE_GESTURE) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .animateItem()
                     )
+                    if (uiState.homeViewDialogType == HomeViewDialogType.DELETE_GESTURE) {
+                        DeleteGestureDialog(
+                            gesture = gesture,
+                            onDismiss = { updateDialogType(HomeViewDialogType.NONE) },
+                            onConfirm = { deleteGesture(gesture) }
+                        )
+                    }
                 }
             }
+
         } else {
             EmptyGesturesView(
                 modifier = Modifier
@@ -149,7 +161,7 @@ fun GestureList(
 @Composable
 private fun GestureCard(
     gesture: Gesture,
-    deleteGesture: (Gesture) -> Unit,
+    onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -158,7 +170,9 @@ private fun GestureCard(
             .clip(RoundedCornerShape(dimensionResource(R.dimen.corner_rounded)))
             .combinedClickable(
                 onClick = {},
-                onLongClick = { Toast.makeText(context, gesture.description, Toast.LENGTH_SHORT).show() }
+                onLongClick = {
+                    Toast.makeText(context, gesture.description, Toast.LENGTH_SHORT).show()
+                }
             )
     ) {
         Row(
@@ -176,7 +190,7 @@ private fun GestureCard(
             )
             Spacer(modifier = Modifier.weight(0.6f))
             IconButton(
-                onClick = { deleteGesture(gesture) }
+                onClick = onDeleteClick
             ) {
                 Icon(
                     imageVector = Icons.Default.Delete,
@@ -185,6 +199,7 @@ private fun GestureCard(
             }
         }
     }
+
 }
 
 @Composable
@@ -199,14 +214,14 @@ private fun CreateGestureDialog(
     Dialog(
         onDismissRequest = onDismiss
     ) {
-        Column (
+        Column(
             modifier = modifier
                 .background(
                     color = MaterialTheme.colorScheme.background,
                     shape = RoundedCornerShape(dimensionResource(R.dimen.corner_rounded))
                 )
                 .padding(all = dimensionResource(R.dimen.padding_medium))
-        ){
+        ) {
             TextField(
                 value = gestureNameEditValue,
                 onValueChange = { gestureNameEditValue = it },
@@ -218,9 +233,9 @@ private fun CreateGestureDialog(
                 onValueChange = { gestureDescriptionEditValue = it },
                 placeholder = { Text("Gesture Description") }
             )
-            Row (
+            Row(
                 modifier = Modifier.align(Alignment.CenterHorizontally)
-            ){
+            ) {
                 TextButton(
                     onClick = {
                         val frames = listOf(
@@ -240,10 +255,18 @@ private fun CreateGestureDialog(
                                 Random.nextFloat().coerceIn(0.0f, 1.0f)
                             )
                         )
-                        onConfirm(Gesture(id=0, name=gestureNameEditValue, description = gestureDescriptionEditValue, frames = frames))
+                        onConfirm(
+                            Gesture(
+                                id = 0,
+                                name = gestureNameEditValue,
+                                description = gestureDescriptionEditValue,
+                                frames = frames
+                            )
+                        )
                         onDismiss()
                     },
-                    enabled = gestureNameEditValue.trim().isNotEmpty() && gestureDescriptionEditValue.trim().isNotEmpty()
+                    enabled = gestureNameEditValue.trim()
+                        .isNotEmpty() && gestureDescriptionEditValue.trim().isNotEmpty()
                 ) {
                     Text("Confirm")
                 }
@@ -252,6 +275,52 @@ private fun CreateGestureDialog(
                     onClick = onDismiss
                 ) {
                     Text("Dismiss")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeleteGestureDialog(
+    gesture: Gesture,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Dialog(
+        onDismissRequest = onDismiss
+    ) {
+        Column(
+            modifier = modifier
+                .background(
+                    color = MaterialTheme.colorScheme.background,
+                    shape = RoundedCornerShape(dimensionResource(R.dimen.corner_rounded))
+                )
+                .padding(all = dimensionResource(R.dimen.padding_medium))
+        ) {
+            Text(
+                text = stringResource(
+                    R.string.delete_gesture_confirmation_description,
+                    gesture.name
+                )
+            )
+            Row(
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            ) {
+                TextButton(
+                    onClick = {
+                        onConfirm()
+                        onDismiss()
+                    }
+                ) {
+                    Text(stringResource(R.string.confirm_button_text))
+                }
+                Spacer(Modifier.width(dimensionResource(R.dimen.padding_large)))
+                TextButton(
+                    onClick = onDismiss
+                ) {
+                    Text(stringResource(R.string.dismiss_button_text))
                 }
             }
         }
