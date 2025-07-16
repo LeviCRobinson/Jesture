@@ -1,21 +1,47 @@
 package com.levicrobinson.jesture.ui.home
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Card
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.levicrobinson.jesture.R
+import com.levicrobinson.jesture.domain.model.Frame
+import com.levicrobinson.jesture.domain.model.Gesture
+import kotlin.random.Random
 
 @Composable
 fun HomeView(
@@ -25,7 +51,9 @@ fun HomeView(
     val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
     when (uiState) {
         is HomeViewUiState.Success -> SuccessView(
-            uiState = uiState
+            uiState = uiState,
+            deleteGesture = viewModel::deleteGesture,
+            submitGestureCreation = viewModel::submitGestureCreation
         )
 
         HomeViewUiState.Error -> ErrorView(modifier = modifier.fillMaxSize())
@@ -35,13 +63,49 @@ fun HomeView(
 }
 
 @Composable
-private fun SuccessView(uiState: HomeViewUiState.Success, modifier: Modifier = Modifier) {
-    GestureList(uiState)
+private fun SuccessView(
+    uiState: HomeViewUiState.Success,
+    submitGestureCreation: (Gesture) -> Unit,
+    deleteGesture: (Gesture) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var showAddGestureDialog by remember { mutableStateOf(false) }
+    Box {
+        GestureList(
+            uiState = uiState,
+            deleteGesture = deleteGesture
+        )
+
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+        ) {
+            Column {
+                FloatingActionButton(
+                    onClick = { showAddGestureDialog = !showAddGestureDialog }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = stringResource(R.string.add_gesture)
+                    )
+                }
+                Spacer(Modifier.height(dimensionResource(R.dimen.padding_large)))
+            }
+            Spacer(Modifier.width(dimensionResource(R.dimen.padding_large)))
+        }
+    }
+    if (showAddGestureDialog) {
+        CreateGestureDialog(
+            onDismiss = {showAddGestureDialog = false},
+            onConfirm = submitGestureCreation
+        )
+    }
 }
 
 @Composable
 fun GestureList(
     uiState: HomeViewUiState.Success,
+    deleteGesture: (Gesture) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -50,16 +114,124 @@ fun GestureList(
             .fillMaxWidth()
             .padding(horizontal = dimensionResource(R.dimen.padding_medium))
     ) {
-        if (uiState.gestures != null) {
+        uiState.gestures?.let {
             itemsIndexed(
                 items = uiState.gestures,
-                key = {index, gesture -> gesture.id}
+                key = { index, gesture -> gesture.id }
             ) { index, gesture ->
-                Row(
+                GestureCard(
+                    gesture = gesture,
+                    deleteGesture = deleteGesture,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .animateItem()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GestureCard(
+    gesture: Gesture,
+    deleteGesture: (Gesture) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .clip(RoundedCornerShape(dimensionResource(R.dimen.corner_rounded)))
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .padding(
+                    horizontal = dimensionResource(R.dimen.padding_medium),
+                    vertical = dimensionResource(R.dimen.padding_small)
+                )
+                .height(dimensionResource(R.dimen.normal_card_height))
+        ) {
+            Text(
+                gesture.name,
+                modifier = Modifier.weight(0.3f)
+            )
+            Spacer(modifier = Modifier.weight(0.7f))
+            IconButton(
+                onClick = { deleteGesture(gesture) }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.delete_gesture)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreateGestureDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (Gesture) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var gestureNameEditValue by remember { mutableStateOf("") }
+    var gestureDescriptionEditValue by remember { mutableStateOf("") }
+
+    Dialog(
+        onDismissRequest = onDismiss
+    ) {
+        Column (
+            modifier = modifier
+                .background(
+                    color = MaterialTheme.colorScheme.background,
+                    shape = RoundedCornerShape(dimensionResource(R.dimen.corner_rounded))
+                )
+                .padding(all = dimensionResource(R.dimen.padding_medium))
+        ){
+            TextField(
+                value = gestureNameEditValue,
+                onValueChange = { gestureNameEditValue = it },
+                placeholder = { Text("Gesture Name") }
+            )
+            Spacer(Modifier.height(dimensionResource(R.dimen.padding_small)))
+            TextField(
+                value = gestureDescriptionEditValue,
+                onValueChange = { gestureDescriptionEditValue = it },
+                placeholder = { Text("Gesture Description") }
+            )
+            Row (
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            ){
+                TextButton(
+                    onClick = {
+                        val frames = listOf(
+                            Frame(
+                                Random.nextFloat().coerceIn(0.0f, 1.0f),
+                                Random.nextFloat().coerceIn(0.0f, 1.0f),
+                                Random.nextFloat().coerceIn(0.0f, 1.0f)
+                            ),
+                            Frame(
+                                Random.nextFloat().coerceIn(0.0f, 1.0f),
+                                Random.nextFloat().coerceIn(0.0f, 1.0f),
+                                Random.nextFloat().coerceIn(0.0f, 1.0f)
+                            ),
+                            Frame(
+                                Random.nextFloat().coerceIn(0.0f, 1.0f),
+                                Random.nextFloat().coerceIn(0.0f, 1.0f),
+                                Random.nextFloat().coerceIn(0.0f, 1.0f)
+                            )
+                        )
+                        onConfirm(Gesture(id=0, name=gestureNameEditValue, description = gestureDescriptionEditValue, frames = frames))
+                        onDismiss()
+                    },
+                    enabled = gestureNameEditValue.trim().isNotEmpty() && gestureDescriptionEditValue.trim().isNotEmpty()
                 ) {
-                    Text(gesture.name)
-                    Spacer(Modifier.width(dimensionResource(R.dimen.padding_medium)))
-                    Text(gesture.description)
+                    Text("Confirm")
+                }
+                Spacer(Modifier.width(dimensionResource(R.dimen.padding_large)))
+                TextButton(
+                    onClick = onDismiss
+                ) {
+                    Text("Dismiss")
                 }
             }
         }

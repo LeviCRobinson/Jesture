@@ -48,12 +48,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun fetchList() {
-        viewModelScope.launch {
-            _gestures.value = gestureUseCases.fetchGestures()
-        }
-    }
-
     @OptIn(ExperimentalCoroutinesApi::class)
     fun initialize() {
         viewModelScope.launch {
@@ -100,6 +94,32 @@ class HomeViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(LOG_TAG, e.message ?: "Error while loading Home view.")
                 _uiState.value = HomeViewUiState.Error
+            }
+        }
+    }
+
+    fun fetchList() {
+        viewModelScope.launch {
+            _gestures.value = gestureUseCases.fetchGestures()
+        }
+    }
+
+    fun submitGestureCreation(gesture: Gesture) {
+        viewModelScope.launch {
+            val response = gestureUseCases.createGesture(gesture)
+            response?.let {
+                println("${response.name} created")
+                _gestures.value = gestureUseCases.fetchGestures()
+            }
+        }
+    }
+
+    fun deleteGesture(gesture: Gesture) {
+        viewModelScope.launch {
+            val response = gestureUseCases.deleteGesture(gesture)
+            response?.let {
+                println("${gesture.name} deleted")
+                _gestures.value = gestureUseCases.fetchGestures()
             }
         }
     }

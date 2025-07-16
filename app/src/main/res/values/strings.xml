@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Jesture</string>
+    <string name="add_gesture">Add Gesture</string>
+    <string name="delete_gesture">Delete Gesture</string>
 </resources>
