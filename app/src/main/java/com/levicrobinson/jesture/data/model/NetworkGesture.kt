@@ -1,8 +1,7 @@
 package com.levicrobinson.jesture.data.model
 
-import com.levicrobinson.jesture.domain.model.Frame
+import com.levicrobinson.jesture.domain.model.AccelerometerReading
 import com.levicrobinson.jesture.domain.model.Gesture
-
 
 
 data class NetworkGesture(
@@ -20,4 +19,4 @@ data class NetworkFrame(
 )
 
 fun NetworkGesture.toDomainModel() = Gesture(id, name, description, frames.map{ it.toDomainModel() })
-fun NetworkFrame.toDomainModel() = Frame(accelX, accelY, accelZ)
+fun NetworkFrame.toDomainModel() = AccelerometerReading(accelX, accelY, accelZ)

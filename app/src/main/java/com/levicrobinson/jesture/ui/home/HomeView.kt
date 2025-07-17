@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -43,10 +44,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.levicrobinson.jesture.R
-import com.levicrobinson.jesture.domain.model.Frame
+import com.levicrobinson.jesture.domain.model.AccelerometerReading
 import com.levicrobinson.jesture.domain.model.Gesture
 import com.levicrobinson.jesture.ui.common.composables.EmptyStateView
 import com.levicrobinson.jesture.ui.common.composables.LoadingStateView
+import kotlin.collections.arrayListOf
 import kotlin.random.Random
 
 @Composable
@@ -58,6 +60,8 @@ fun HomeView(
     when (uiState) {
         is HomeViewUiState.Success -> SuccessView(
             uiState = uiState,
+            startGestureRecord = viewModel::startGestureRecord,
+            stopGestureRecord = viewModel::stopGestureRecord,
             deleteGesture = viewModel::deleteGesture,
             submitGestureCreation = viewModel::submitGestureCreation,
             updateDialogType = viewModel::updateDialogType
@@ -72,17 +76,59 @@ fun HomeView(
 @Composable
 private fun SuccessView(
     uiState: HomeViewUiState.Success,
+    startGestureRecord: () -> Unit,
+    stopGestureRecord: () -> ArrayList<AccelerometerReading>?,
     submitGestureCreation: (Gesture) -> Unit,
     deleteGesture: (Gesture) -> Unit,
     updateDialogType: (HomeViewDialogType) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier) {
-        GestureList(
-            uiState = uiState,
-            deleteGesture = deleteGesture,
-            updateDialogType = updateDialogType
-        )
+        Column {
+            GestureList(
+                uiState = uiState,
+                deleteGesture = deleteGesture,
+                updateDialogType = updateDialogType,
+                modifier = Modifier.weight(1f)
+            )
+            var showReadingList by remember { mutableStateOf(false) }
+            var readingList by remember { mutableStateOf(listOf<AccelerometerReading>()) }
+            if(showReadingList) {
+                LazyColumn(
+
+                ) {
+                    items(
+                        items = readingList
+                    ) { reading ->
+                        Row {
+                            Text("X: ${reading.accelX} ")
+                            Text("Y: ${reading.accelY} ")
+                            Text("Z: ${reading.accelZ}")
+                        }
+                    }
+                }
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.Start
+            ) {
+                TextButton(
+                    onClick = startGestureRecord
+                ) {
+                    Text("Start")
+                }
+
+                TextButton(
+                    onClick = {
+                        readingList = stopGestureRecord() ?: arrayListOf()
+                        showReadingList = true
+                    }
+                ) {
+                    Text("Stop")
+                }
+            }
+        }
+
 
         Row(
             modifier = Modifier
@@ -238,18 +284,18 @@ private fun CreateGestureDialog(
             ) {
                 TextButton(
                     onClick = {
-                        val frames = listOf(
-                            Frame(
+                        val accelerometerReadings = listOf(
+                            AccelerometerReading(
                                 Random.nextFloat().coerceIn(0.0f, 1.0f),
                                 Random.nextFloat().coerceIn(0.0f, 1.0f),
                                 Random.nextFloat().coerceIn(0.0f, 1.0f)
                             ),
-                            Frame(
+                            AccelerometerReading(
                                 Random.nextFloat().coerceIn(0.0f, 1.0f),
                                 Random.nextFloat().coerceIn(0.0f, 1.0f),
                                 Random.nextFloat().coerceIn(0.0f, 1.0f)
                             ),
-                            Frame(
+                            AccelerometerReading(
                                 Random.nextFloat().coerceIn(0.0f, 1.0f),
                                 Random.nextFloat().coerceIn(0.0f, 1.0f),
                                 Random.nextFloat().coerceIn(0.0f, 1.0f)
@@ -260,7 +306,7 @@ private fun CreateGestureDialog(
                                 id = 0,
                                 name = gestureNameEditValue,
                                 description = gestureDescriptionEditValue,
-                                frames = frames
+                                accelerometerReadings = accelerometerReadings
                             )
                         )
                         onDismiss()

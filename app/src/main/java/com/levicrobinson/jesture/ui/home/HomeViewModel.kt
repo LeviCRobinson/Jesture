@@ -6,8 +6,12 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.levicrobinson.jesture.data.LOG_TAG
+import com.levicrobinson.jesture.data.repository.SensorRepositoryImpl
+import com.levicrobinson.jesture.domain.model.AccelerometerReading
 import com.levicrobinson.jesture.domain.model.Gesture
 import com.levicrobinson.jesture.domain.usecase.GestureUseCases
+import com.levicrobinson.jesture.domain.usecase.StartGestureRecordUseCase
+import com.levicrobinson.jesture.domain.usecase.StopGestureRecordUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,7 +40,8 @@ sealed interface HomeViewUiState {
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val gestureUseCases: GestureUseCases
+    private val gestureUseCases: GestureUseCases,
+    private val sensorRepositoryFactory: SensorRepositoryImpl.Factory
 ) : ViewModel() {
     private val _uiState: MutableStateFlow<HomeViewUiState> =
         MutableStateFlow(HomeViewUiState.Loading)
@@ -44,6 +49,9 @@ class HomeViewModel @Inject constructor(
 
     private var _gestures: MutableStateFlow<List<Gesture>?> = MutableStateFlow(null)
     private var _searchString = mutableStateOf("")
+    private var _readings: ArrayList<AccelerometerReading>? = null
+    private lateinit var startGestureRecordUseCase: StartGestureRecordUseCase
+    private lateinit var stopGestureRecordUseCase: StopGestureRecordUseCase
 
     init {
         viewModelScope.launch {
@@ -53,6 +61,8 @@ class HomeViewModel @Inject constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun initialize() {
+        initializeGestureRecordUseCases()
+
         viewModelScope.launch {
             try {
                 val searchStringFlow = snapshotFlow { _searchString }.mapLatest { it }
@@ -134,7 +144,38 @@ class HomeViewModel @Inject constructor(
                 _uiState.value = currentState.copy(homeViewDialogType = dialogType)
             }
         }
+    }
 
+    fun startGestureRecord() {
+        viewModelScope.launch {
+            _readings = arrayListOf()
+            startGestureRecordUseCase()
+        }
+
+    }
+
+    fun stopGestureRecord(): ArrayList<AccelerometerReading>? {
+        var returnVal: ArrayList<AccelerometerReading>? = null
+        viewModelScope.launch {
+            stopGestureRecordUseCase()
+            returnVal = _readings
+            _readings = null
+
+        }
+        return returnVal
+    }
+
+    private fun initializeGestureRecordUseCases() {
+        val sensorRepository = sensorRepositoryFactory.create(onReading = { x,y,z ->
+            val reading = AccelerometerReading(
+                accelX = x,
+                accelY = y,
+                accelZ = z
+            )
+            _readings?.add(reading)
+        })
+        startGestureRecordUseCase = StartGestureRecordUseCase(sensorRepository)
+        stopGestureRecordUseCase = StopGestureRecordUseCase(sensorRepository)
     }
 }
 

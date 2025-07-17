@@ -17,7 +17,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
-
     @Provides
     @Singleton
     fun provideOkHttpClient(): OkHttpClient {
@@ -41,11 +40,11 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideDeviceApi(retrofit: Retrofit): GestureApi =
+    fun provideGestureApi(retrofit: Retrofit): GestureApi =
         retrofit.create(GestureApi::class.java)
 
     @Provides
     @Singleton
-    fun provideDeviceRepository(api: GestureApi): GestureRepository =
+    fun provideGestureRepository(api: GestureApi): GestureRepository =
         GestureRepositoryImpl(api)
 }

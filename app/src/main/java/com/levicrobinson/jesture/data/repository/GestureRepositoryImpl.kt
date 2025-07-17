@@ -61,7 +61,7 @@ class GestureRepositoryImpl @Inject constructor(
             "gestureInput" to mapOf(
                 "name" to gesture.name.trim(),
                 "description" to gesture.description.trim(),
-                "frames" to gesture.frames.map {
+                "frames" to gesture.accelerometerReadings.map {
                     mapOf(
                         "accelX" to it.accelX,
                         "accelY" to it.accelY,

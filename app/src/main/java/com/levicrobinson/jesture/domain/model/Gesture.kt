@@ -4,11 +4,5 @@ data class Gesture(
     val id: Int,
     val name: String,
     val description: String,
-    val frames: List<Frame>
-)
-
-data class Frame(
-    val accelX: Float,
-    val accelY: Float,
-    val accelZ: Float
+    val accelerometerReadings: List<AccelerometerReading>
 )

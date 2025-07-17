@@ -5,13 +5,16 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
+import dagger.hilt.android.qualifiers.ApplicationContext
 
-class AccelerometerListener(
-    context: Context,
-    private val onReading: (x: Float, y: Float, z: Float) -> Unit
+class AccelerometerListener @AssistedInject constructor(
+    @ApplicationContext context: Context,
+    @Assisted private val onReading: (x: Float, y: Float, z: Float) -> Unit
 ) : SensorEventListener {
 
-    private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    private val sensorManager =  context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     private val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
 
     fun start() {
