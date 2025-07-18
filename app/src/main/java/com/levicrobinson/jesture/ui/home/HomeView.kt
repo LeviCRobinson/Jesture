@@ -2,7 +2,9 @@ package com.levicrobinson.jesture.ui.home
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,14 +14,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.FloatingActionButton
@@ -37,6 +42,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
@@ -48,8 +55,8 @@ import com.levicrobinson.jesture.domain.model.AccelerometerReading
 import com.levicrobinson.jesture.domain.model.Gesture
 import com.levicrobinson.jesture.ui.common.composables.EmptyStateView
 import com.levicrobinson.jesture.ui.common.composables.LoadingStateView
-import kotlin.collections.arrayListOf
-import kotlin.random.Random
+import com.levicrobinson.jesture.ui.utils.HapticsUtils
+import com.levicrobinson.jesture.ui.utils.disabled
 
 @Composable
 fun HomeView(
@@ -78,7 +85,7 @@ private fun SuccessView(
     uiState: HomeViewUiState.Success,
     startGestureRecord: () -> Unit,
     stopGestureRecord: () -> ArrayList<AccelerometerReading>?,
-    submitGestureCreation: (Gesture) -> Unit,
+    submitGestureCreation: (String, String, List<AccelerometerReading>) -> Unit,
     deleteGesture: (Gesture) -> Unit,
     updateDialogType: (HomeViewDialogType) -> Unit,
     modifier: Modifier = Modifier
@@ -91,42 +98,6 @@ private fun SuccessView(
                 updateDialogType = updateDialogType,
                 modifier = Modifier.weight(1f)
             )
-            var showReadingList by remember { mutableStateOf(false) }
-            var readingList by remember { mutableStateOf(listOf<AccelerometerReading>()) }
-            if(showReadingList) {
-                LazyColumn(
-
-                ) {
-                    items(
-                        items = readingList
-                    ) { reading ->
-                        Row {
-                            Text("X: ${reading.accelX} ")
-                            Text("Y: ${reading.accelY} ")
-                            Text("Z: ${reading.accelZ}")
-                        }
-                    }
-                }
-            }
-
-            Row(
-                horizontalArrangement = Arrangement.Start
-            ) {
-                TextButton(
-                    onClick = startGestureRecord
-                ) {
-                    Text("Start")
-                }
-
-                TextButton(
-                    onClick = {
-                        readingList = stopGestureRecord() ?: arrayListOf()
-                        showReadingList = true
-                    }
-                ) {
-                    Text("Stop")
-                }
-            }
         }
 
 
@@ -152,7 +123,9 @@ private fun SuccessView(
     if (uiState.homeViewDialogType == HomeViewDialogType.CREATE_GESTURE) {
         CreateGestureDialog(
             onDismiss = { updateDialogType(HomeViewDialogType.NONE) },
-            onConfirm = submitGestureCreation
+            onConfirm = submitGestureCreation,
+            startGestureRecord = startGestureRecord,
+            stopGestureRecord = stopGestureRecord
         )
     }
 }
@@ -251,12 +224,17 @@ private fun GestureCard(
 @Composable
 private fun CreateGestureDialog(
     onDismiss: () -> Unit,
-    onConfirm: (Gesture) -> Unit,
+    onConfirm: (String, String, List<AccelerometerReading>) -> Unit,
+    startGestureRecord: () -> Unit,
+    stopGestureRecord: () -> ArrayList<AccelerometerReading>?,
     modifier: Modifier = Modifier
 ) {
     var gestureNameEditValue by remember { mutableStateOf("") }
     var gestureDescriptionEditValue by remember { mutableStateOf("") }
-
+    val inputsFilled = gestureNameEditValue.isNotBlank() && gestureDescriptionEditValue.isNotBlank()
+    var isRecording by remember {mutableStateOf(false)}
+    var gestureReadings by remember { mutableStateOf(listOf<AccelerometerReading>()) }
+    val context = LocalContext.current
     Dialog(
         onDismissRequest = onDismiss
     ) {
@@ -268,6 +246,22 @@ private fun CreateGestureDialog(
                 )
                 .padding(all = dimensionResource(R.dimen.padding_medium))
         ) {
+            Row(
+                horizontalArrangement = Arrangement.End,
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .padding(vertical = dimensionResource(R.dimen.padding_small))
+            ) {
+                IconButton (
+                    onClick = onDismiss,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = stringResource(R.string.close)
+                    )
+                }
+            }
+
             TextField(
                 value = gestureNameEditValue,
                 onValueChange = { gestureNameEditValue = it },
@@ -279,48 +273,58 @@ private fun CreateGestureDialog(
                 onValueChange = { gestureDescriptionEditValue = it },
                 placeholder = { Text("Gesture Description") }
             )
+
             Row(
-                modifier = Modifier.align(Alignment.CenterHorizontally)
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(top = dimensionResource(R.dimen.padding_small))
             ) {
                 TextButton(
                     onClick = {
-                        val accelerometerReadings = listOf(
-                            AccelerometerReading(
-                                Random.nextFloat().coerceIn(0.0f, 1.0f),
-                                Random.nextFloat().coerceIn(0.0f, 1.0f),
-                                Random.nextFloat().coerceIn(0.0f, 1.0f)
-                            ),
-                            AccelerometerReading(
-                                Random.nextFloat().coerceIn(0.0f, 1.0f),
-                                Random.nextFloat().coerceIn(0.0f, 1.0f),
-                                Random.nextFloat().coerceIn(0.0f, 1.0f)
-                            ),
-                            AccelerometerReading(
-                                Random.nextFloat().coerceIn(0.0f, 1.0f),
-                                Random.nextFloat().coerceIn(0.0f, 1.0f),
-                                Random.nextFloat().coerceIn(0.0f, 1.0f)
-                            )
-                        )
-                        onConfirm(
-                            Gesture(
-                                id = 0,
-                                name = gestureNameEditValue,
-                                description = gestureDescriptionEditValue,
-                                accelerometerReadings = accelerometerReadings
-                            )
-                        )
-                        onDismiss()
+                        onConfirm(gestureNameEditValue, gestureDescriptionEditValue, gestureReadings)
+                        gestureReadings = listOf()
                     },
-                    enabled = gestureNameEditValue.trim()
-                        .isNotEmpty() && gestureDescriptionEditValue.trim().isNotEmpty()
+                    enabled = gestureNameEditValue.isNotBlank() && gestureDescriptionEditValue.isNotBlank() && gestureReadings.isNotEmpty()
                 ) {
-                    Text("Confirm")
+                    Text("Create")
                 }
                 Spacer(Modifier.width(dimensionResource(R.dimen.padding_large)))
-                TextButton(
-                    onClick = onDismiss
+                Box (
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(dimensionResource(R.dimen.record_button_size))
+                        .border(
+                            width = dimensionResource(R.dimen.button_border_width),
+                            shape = CircleShape,
+                            color = if(inputsFilled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.disabled
+                        )
+                        .clip(CircleShape)
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onLongPress = {
+                                    if(inputsFilled) {
+                                        isRecording = true
+                                        HapticsUtils.heavyClick(context)
+                                        startGestureRecord()
+                                    }
+                                },
+                                onPress = {
+                                    if(inputsFilled) {
+                                        tryAwaitRelease()
+                                        HapticsUtils.normalClick(context)
+                                        isRecording = false
+                                        gestureReadings = stopGestureRecord() ?: arrayListOf()
+                                    }
+                                }
+                            )
+                        }
                 ) {
-                    Text("Dismiss")
+                    Icon(
+                        imageVector = Icons.Default.FiberManualRecord,
+                        contentDescription = stringResource(R.string.record_gesture),
+                        modifier = Modifier.size(dimensionResource(R.dimen.button_icon_size)),
+                        tint = if(inputsFilled) Color.Red else Color.Red.disabled
+                    )
                 }
             }
         }

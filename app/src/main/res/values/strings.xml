@@ -8,4 +8,6 @@
     <string name="confirm_button_text">Confirm</string>
     <string name="dismiss_button_text">Dismiss</string>
     <string name="delete_gesture_confirmation_description">Are you sure you want to delete the \"%1$s\" Gesture?</string>
+    <string name="record_gesture">Record Gesture</string>
+    <string name="close">Close</string>
 </resources>

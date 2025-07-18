@@ -117,11 +117,10 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun submitGestureCreation(gesture: Gesture) {
+    fun submitGestureCreation(gestureName: String, gestureDescription: String, accelerometerReadings: List<AccelerometerReading>) {
         viewModelScope.launch {
-            val response = gestureUseCases.createGesture(gesture)
+            val response = gestureUseCases.createGesture(gestureName, gestureDescription, accelerometerReadings)
             response?.let {
-                println("${response.name} created")
                 _gestures.value = gestureUseCases.fetchGestures()
             }
         }
@@ -180,5 +179,5 @@ class HomeViewModel @Inject constructor(
 }
 
 enum class HomeViewDialogType {
-    NONE, DELETE_GESTURE, CREATE_GESTURE
+    NONE, DELETE_GESTURE, CREATE_GESTURE, UPDATE_GESTURE
 }

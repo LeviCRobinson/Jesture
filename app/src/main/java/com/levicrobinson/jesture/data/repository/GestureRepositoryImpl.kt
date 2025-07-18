@@ -6,6 +6,7 @@ import com.levicrobinson.jesture.data.api.GestureApi
 import com.levicrobinson.jesture.data.model.GraphQLRequest
 import com.levicrobinson.jesture.data.model.toDomainModel
 import com.levicrobinson.jesture.domain.model.Gesture
+import com.levicrobinson.jesture.domain.model.toGraphQLVariables
 import com.levicrobinson.jesture.domain.repository.GestureRepository
 import jakarta.inject.Inject
 
@@ -57,19 +58,7 @@ class GestureRepositoryImpl @Inject constructor(
             }
         """.trimIndent()
 
-        val variables = mapOf(
-            "gestureInput" to mapOf(
-                "name" to gesture.name.trim(),
-                "description" to gesture.description.trim(),
-                "frames" to gesture.accelerometerReadings.map {
-                    mapOf(
-                        "accelX" to it.accelX,
-                        "accelY" to it.accelY,
-                        "accelZ" to it.accelZ
-                    )
-                }
-            )
-        )
+        val variables = gesture.toGraphQLVariables()
 
         val request = GraphQLRequest(query = query, variables = variables)
         val response = gestureApi.createGesture(request)
