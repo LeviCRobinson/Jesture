@@ -32,13 +32,13 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,7 +51,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -63,6 +62,7 @@ import com.levicrobinson.jesture.ui.common.composables.LoadingStateView
 import com.levicrobinson.jesture.ui.theme.ConfirmGreen
 import com.levicrobinson.jesture.ui.utils.HapticsUtils
 import com.levicrobinson.jesture.ui.utils.disabled
+import kotlinx.coroutines.delay
 
 @Composable
 fun HomeView(
@@ -238,9 +238,23 @@ private fun CreateGestureDialog(
     var gestureNameEditValue by remember { mutableStateOf("") }
     var gestureDescriptionEditValue by remember { mutableStateOf("") }
     val inputsFilled = gestureNameEditValue.isNotBlank() && gestureDescriptionEditValue.isNotBlank()
-    var isRecording by remember {mutableStateOf(false)}
+    var isRecording by remember { mutableStateOf(false) }
+    var useTimeTickHeavyClick by remember { mutableStateOf(false) }
     var gestureReadings by remember { mutableStateOf(listOf<AccelerometerReading>()) }
     val context = LocalContext.current
+
+    LaunchedEffect(isRecording) {
+        while (isRecording) {
+            if(useTimeTickHeavyClick) {
+                HapticsUtils.heavyClick(context)
+            } else {
+                HapticsUtils.normalClick(context)
+            }
+            delay(500)
+            useTimeTickHeavyClick = !useTimeTickHeavyClick
+        }
+        useTimeTickHeavyClick = false
+    }
     Dialog(
         onDismissRequest = onDismiss
     ) {
@@ -258,7 +272,7 @@ private fun CreateGestureDialog(
                     .align(Alignment.End)
                     .padding(vertical = dimensionResource(R.dimen.padding_small))
             ) {
-                IconButton (
+                IconButton(
                     onClick = onDismiss,
                 ) {
                     Icon(
@@ -285,13 +299,18 @@ private fun CreateGestureDialog(
                     .align(Alignment.CenterHorizontally)
                     .padding(top = dimensionResource(R.dimen.padding_small))
             ) {
-                FilledIconButton (
+                FilledIconButton(
                     onClick = {
-                        onConfirm(gestureNameEditValue, gestureDescriptionEditValue, gestureReadings)
+                        onConfirm(
+                            gestureNameEditValue,
+                            gestureDescriptionEditValue,
+                            gestureReadings
+                        )
                         gestureReadings = listOf()
                     },
                     enabled = inputsFilled && gestureReadings.isNotEmpty(),
-                    colors = IconButtonDefaults.filledIconButtonColors().copy(containerColor = ConfirmGreen, contentColor = Color.White),
+                    colors = IconButtonDefaults.filledIconButtonColors()
+                        .copy(containerColor = ConfirmGreen, contentColor = Color.White),
                     shape = RoundedCornerShape(dimensionResource(R.dimen.corner_semirounded))
                 ) {
                     Icon(
@@ -300,27 +319,26 @@ private fun CreateGestureDialog(
                     )
                 }
                 Spacer(Modifier.width(dimensionResource(R.dimen.padding_large)))
-                Box (
+                Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(dimensionResource(R.dimen.record_button_size))
                         .border(
                             width = dimensionResource(R.dimen.button_border_width),
                             shape = CircleShape,
-                            color = if(inputsFilled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.disabled
+                            color = if (inputsFilled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.disabled
                         )
                         .clip(CircleShape)
                         .pointerInput(Unit) {
                             detectTapGestures(
                                 onLongPress = {
-                                    if(inputsFilled) {
+                                    if (inputsFilled) {
                                         isRecording = true
-                                        HapticsUtils.heavyClick(context)
                                         startGestureRecord()
                                     }
                                 },
                                 onPress = {
-                                    if(inputsFilled) {
+                                    if (inputsFilled) {
                                         tryAwaitRelease()
                                         HapticsUtils.normalClick(context)
                                         isRecording = false
@@ -334,7 +352,7 @@ private fun CreateGestureDialog(
                         imageVector = Icons.Default.FiberManualRecord,
                         contentDescription = stringResource(R.string.record_gesture),
                         modifier = Modifier.size(dimensionResource(R.dimen.button_icon_size)),
-                        tint = if(inputsFilled) Color.Red else Color.Red.disabled
+                        tint = if (inputsFilled) Color.Red else Color.Red.disabled
                     )
                 }
             }
