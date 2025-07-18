@@ -22,14 +22,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonColors
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,6 +51,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -55,6 +60,7 @@ import com.levicrobinson.jesture.domain.model.AccelerometerReading
 import com.levicrobinson.jesture.domain.model.Gesture
 import com.levicrobinson.jesture.ui.common.composables.EmptyStateView
 import com.levicrobinson.jesture.ui.common.composables.LoadingStateView
+import com.levicrobinson.jesture.ui.theme.ConfirmGreen
 import com.levicrobinson.jesture.ui.utils.HapticsUtils
 import com.levicrobinson.jesture.ui.utils.disabled
 
@@ -265,13 +271,13 @@ private fun CreateGestureDialog(
             TextField(
                 value = gestureNameEditValue,
                 onValueChange = { gestureNameEditValue = it },
-                placeholder = { Text("Gesture Name") }
+                placeholder = { Text(stringResource(R.string.gesture_name_field_label)) }
             )
             Spacer(Modifier.height(dimensionResource(R.dimen.padding_small)))
             TextField(
                 value = gestureDescriptionEditValue,
                 onValueChange = { gestureDescriptionEditValue = it },
-                placeholder = { Text("Gesture Description") }
+                placeholder = { Text(stringResource(R.string.gesture_description_field_label)) }
             )
 
             Row(
@@ -279,14 +285,19 @@ private fun CreateGestureDialog(
                     .align(Alignment.CenterHorizontally)
                     .padding(top = dimensionResource(R.dimen.padding_small))
             ) {
-                TextButton(
+                FilledIconButton (
                     onClick = {
                         onConfirm(gestureNameEditValue, gestureDescriptionEditValue, gestureReadings)
                         gestureReadings = listOf()
                     },
-                    enabled = gestureNameEditValue.isNotBlank() && gestureDescriptionEditValue.isNotBlank() && gestureReadings.isNotEmpty()
+                    enabled = inputsFilled && gestureReadings.isNotEmpty(),
+                    colors = IconButtonDefaults.filledIconButtonColors().copy(containerColor = ConfirmGreen, contentColor = Color.White),
+                    shape = RoundedCornerShape(dimensionResource(R.dimen.corner_semirounded))
                 ) {
-                    Text("Create")
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = stringResource(R.string.confirm_button_text)
+                    )
                 }
                 Spacer(Modifier.width(dimensionResource(R.dimen.padding_large)))
                 Box (

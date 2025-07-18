@@ -10,4 +10,6 @@
     <string name="delete_gesture_confirmation_description">Are you sure you want to delete the \"%1$s\" Gesture?</string>
     <string name="record_gesture">Record Gesture</string>
     <string name="close">Close</string>
+    <string name="gesture_name_field_label">Gesture Name</string>
+    <string name="gesture_description_field_label">Gesture Description</string>
 </resources>
