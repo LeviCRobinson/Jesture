@@ -156,19 +156,15 @@ fun GestureList(
                     key = { index, gesture -> gesture.id }
                 ) { index, gesture ->
                     GestureCard(
+                        uiState = uiState,
                         gesture = gesture,
                         onDeleteClick = { updateDialogType(HomeViewDialogType.DELETE_GESTURE) },
+                        updateDialogType = updateDialogType,
+                        deleteGesture = deleteGesture,
                         modifier = Modifier
                             .fillMaxWidth()
                             .animateItem()
                     )
-                    if (uiState.homeViewDialogType == HomeViewDialogType.DELETE_GESTURE) {
-                        DeleteGestureDialog(
-                            gesture = gesture,
-                            onDismiss = { updateDialogType(HomeViewDialogType.NONE) },
-                            onConfirm = { deleteGesture(gesture) }
-                        )
-                    }
                 }
             }
 
@@ -185,11 +181,15 @@ fun GestureList(
 
 @Composable
 private fun GestureCard(
+    uiState: HomeViewUiState.Success,
     gesture: Gesture,
     onDeleteClick: () -> Unit,
+    updateDialogType: (HomeViewDialogType) -> Unit,
+    deleteGesture: (Gesture) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    var gestureIdToDelete by remember { mutableStateOf(0) }
     Card(
         modifier = modifier
             .clip(RoundedCornerShape(dimensionResource(R.dimen.corner_rounded)))
@@ -215,7 +215,10 @@ private fun GestureCard(
             )
             Spacer(modifier = Modifier.weight(0.6f))
             IconButton(
-                onClick = onDeleteClick
+                onClick = {
+                    gestureIdToDelete = gesture.id
+                    onDeleteClick()
+                }
             ) {
                 Icon(
                     imageVector = Icons.Default.Delete,
@@ -223,6 +226,17 @@ private fun GestureCard(
                 )
             }
         }
+    }
+
+    if (uiState.homeViewDialogType == HomeViewDialogType.DELETE_GESTURE && gesture.id == gestureIdToDelete) {
+        DeleteGestureDialog(
+            gesture = gesture,
+            onDismiss = {
+                updateDialogType(HomeViewDialogType.NONE)
+                gestureIdToDelete = 0
+            },
+            onConfirm = { deleteGesture(gesture) }
+        )
     }
 
 }
@@ -245,7 +259,7 @@ private fun CreateGestureDialog(
 
     LaunchedEffect(isRecording) {
         while (isRecording) {
-            if(useTimeTickHeavyClick) {
+            if (useTimeTickHeavyClick) {
                 HapticsUtils.heavyClick(context)
             } else {
                 HapticsUtils.normalClick(context)
