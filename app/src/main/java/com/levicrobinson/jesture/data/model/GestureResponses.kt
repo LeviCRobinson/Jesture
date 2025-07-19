@@ -14,3 +14,8 @@ data class GestureCreateResponse(
 data class DeleteGestureResponse(
     val deleteGesture: String
 )
+
+data class RecognizeGestureResponse(
+    @SerializedName("getMatchingGesture")
+    val matchingGesture: NetworkGesture
+)

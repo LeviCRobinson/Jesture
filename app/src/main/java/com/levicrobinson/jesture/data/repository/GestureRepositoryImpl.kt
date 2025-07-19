@@ -5,6 +5,7 @@ import com.levicrobinson.jesture.data.LOG_TAG
 import com.levicrobinson.jesture.data.api.GestureApi
 import com.levicrobinson.jesture.data.model.GraphQLRequest
 import com.levicrobinson.jesture.data.model.toDomainModel
+import com.levicrobinson.jesture.domain.model.AccelerometerReading
 import com.levicrobinson.jesture.domain.model.Gesture
 import com.levicrobinson.jesture.domain.model.toGraphQLVariables
 import com.levicrobinson.jesture.domain.repository.GestureRepository
@@ -43,6 +44,9 @@ class GestureRepositoryImpl @Inject constructor(
     }
 
     override suspend fun createGesture(gesture: Gesture): Gesture? {
+        if (gesture.accelerometerReadings.isEmpty() || gesture.name.isEmpty() || gesture.description.isEmpty())
+            return null
+
         val query = """
             mutation CreateGesture(${'$'}gestureInput: GestureWithFramesInput!) {
               createGesture(gestureInput: ${'$'}gestureInput) {
@@ -88,6 +92,39 @@ class GestureRepositoryImpl @Inject constructor(
         var result: String? = null
         if (response.isSuccessful) {
             result = response.body()?.data?.deleteGesture
+        } else {
+            Log.e(LOG_TAG, "Error: ${response.errorBody()?.string()}")
+        }
+
+        return result
+    }
+
+    override suspend fun recognizeGesture(readings: List<AccelerometerReading>): Gesture? {
+        val query = """
+            query GetMatchingGesture(${'$'}framesInput: [FrameInput!]!){
+                getMatchingGesture(framesInput: ${'$'}framesInput) {
+                    id
+                    name
+                    description
+                    frames {
+                        accelZ
+                    }
+                }
+            }
+        """.trimIndent()
+        val variables = mapOf("framesInput" to readings.map {
+            mapOf(
+                "accelX" to it.accelX,
+                "accelY" to it.accelY,
+                "accelZ" to it.accelZ
+            )
+        })
+        val request = GraphQLRequest(query = query, variables = variables)
+        val response = gestureApi.recognizeGesture(request)
+
+        var result: Gesture? = null
+        if (response.isSuccessful) {
+            result = response.body()?.data?.matchingGesture?.toDomainModel()
         } else {
             Log.e(LOG_TAG, "Error: ${response.errorBody()?.string()}")
         }

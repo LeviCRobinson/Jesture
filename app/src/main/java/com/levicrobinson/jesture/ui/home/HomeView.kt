@@ -1,5 +1,6 @@
 package com.levicrobinson.jesture.ui.home
 
+import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -72,6 +73,7 @@ fun HomeView(
             startGestureRecord = viewModel::startGestureRecord,
             stopGestureRecord = viewModel::stopGestureRecord,
             submitGestureCreation = viewModel::submitGestureCreation,
+            submitGestureRecognition = viewModel::submitGestureRecognition,
             updateDialogGestureName = viewModel::updateDialogGestureName,
             updateDialogGestureDescription = viewModel::updateDialogGestureDescription,
             canConfirmGestureCreation = viewModel::canConfirmGestureCreation,
@@ -91,6 +93,7 @@ private fun SuccessView(
     startGestureRecord: () -> Unit,
     stopGestureRecord: () -> Unit,
     submitGestureCreation: () -> Unit,
+    submitGestureRecognition: (Context) -> Unit,
     updateDialogGestureName: (String) -> Unit,
     updateDialogGestureDescription: (String) -> Unit,
     canConfirmGestureCreation: () -> Boolean,
@@ -108,6 +111,23 @@ private fun SuccessView(
             )
         }
 
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+        ) {
+            Column {
+                val context = LocalContext.current
+                GestureRecordButton(
+                    startGestureRecord = startGestureRecord,
+                    stopGestureRecord = {
+                        stopGestureRecord()
+                        submitGestureRecognition(context)
+                    },
+                    enabled = true
+                )
+                Spacer(Modifier.height(dimensionResource(R.dimen.padding_large)))
+            }
+        }
 
         Row(
             modifier = Modifier
@@ -332,14 +352,8 @@ private fun CreateGestureDialog(
                 )
                 Spacer(Modifier.width(dimensionResource(R.dimen.padding_large)))
                 GestureRecordButton(
-                    startGestureRecord = {
-                        startGestureRecord()
-                        isRecording = true
-                    },
-                    stopGestureRecord = {
-                        stopGestureRecord()
-                        isRecording = false
-                    },
+                    startGestureRecord = startGestureRecord,
+                    stopGestureRecord = stopGestureRecord,
                     enabled = textInputsFilled
                 )
             }
@@ -354,7 +368,22 @@ private fun GestureRecordButton(
     enabled: Boolean,
     modifier: Modifier = Modifier
 ) {
+    var isRecording by remember { mutableStateOf(false) }
+    var useTimeTickHeavyClick by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    LaunchedEffect(isRecording) {
+        while (isRecording) {
+            if (useTimeTickHeavyClick) {
+                HapticsUtils.heavyClick(context)
+            } else {
+                HapticsUtils.normalClick(context)
+            }
+            delay(500)
+            useTimeTickHeavyClick = !useTimeTickHeavyClick
+        }
+        useTimeTickHeavyClick = false
+    }
+
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
@@ -370,6 +399,7 @@ private fun GestureRecordButton(
                     onLongPress = {
                         if (enabled) {
                             startGestureRecord()
+                            isRecording = true
                         }
                     },
                     onPress = {
@@ -377,6 +407,7 @@ private fun GestureRecordButton(
                             tryAwaitRelease()
                             HapticsUtils.normalClick(context)
                             stopGestureRecord()
+                            isRecording = false
                         }
                     }
                 )

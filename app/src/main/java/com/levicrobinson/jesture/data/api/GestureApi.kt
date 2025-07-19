@@ -6,6 +6,7 @@ import com.levicrobinson.jesture.data.model.DeleteGestureResponse
 import com.levicrobinson.jesture.data.model.GestureCreateResponse
 import com.levicrobinson.jesture.data.model.GraphQLRequest
 import com.levicrobinson.jesture.data.model.GraphQLResponse
+import com.levicrobinson.jesture.data.model.RecognizeGestureResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.Headers
@@ -29,4 +30,10 @@ interface GestureApi {
     suspend fun deleteGesture(
         @Body body: GraphQLRequest
     ): Response<GraphQLResponse<DeleteGestureResponse>>
+
+    @Headers("x-api-key: ${BuildConfig.GESTURE_API_KEY}")
+    @POST("/graphql")
+    suspend fun recognizeGesture(
+        @Body body: GraphQLRequest
+    ): Response<GraphQLResponse<RecognizeGestureResponse>>
 }

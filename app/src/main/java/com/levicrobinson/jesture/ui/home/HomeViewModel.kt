@@ -1,6 +1,8 @@
 package com.levicrobinson.jesture.ui.home
 
+import android.content.Context
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
@@ -136,6 +138,21 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun submitGestureRecognition(context: Context) {
+        val currentState = _uiState.value
+        if (currentState is HomeViewUiState.Success) {
+            viewModelScope.launch {
+                val response = gestureUseCases.recognizeGestureUseCase(
+                    currentState.gestureReadings?.toList() ?: listOf()
+                )
+                response?.let {
+                    // On response, set dialog inputs and gesture readings to default state.
+                    Toast.makeText(context, "Recognized gesture: ${it.name}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
     fun deleteGesture(gesture: Gesture) {
         viewModelScope.launch {
             val response = gestureUseCases.deleteGesture(gesture)
@@ -222,7 +239,7 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun initializeGestureRecordUseCases() {
-        val sensorRepository = sensorRepositoryFactory.create(onReading = { x,y,z ->
+        val sensorRepository = sensorRepositoryFactory.create(onReading = { x, y, z ->
             val reading = AccelerometerReading(
                 accelX = x,
                 accelY = y,
