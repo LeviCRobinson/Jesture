@@ -22,20 +22,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,11 +51,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.levicrobinson.jesture.R
-import com.levicrobinson.jesture.domain.model.AccelerometerReading
 import com.levicrobinson.jesture.domain.model.Gesture
+import com.levicrobinson.jesture.ui.common.composables.ConfirmIconButton
+import com.levicrobinson.jesture.ui.common.composables.DismissIconButton
 import com.levicrobinson.jesture.ui.common.composables.EmptyStateView
 import com.levicrobinson.jesture.ui.common.composables.LoadingStateView
-import com.levicrobinson.jesture.ui.theme.ConfirmGreen
 import com.levicrobinson.jesture.ui.utils.HapticsUtils
 import com.levicrobinson.jesture.ui.utils.disabled
 import kotlinx.coroutines.delay
@@ -75,8 +71,11 @@ fun HomeView(
             uiState = uiState,
             startGestureRecord = viewModel::startGestureRecord,
             stopGestureRecord = viewModel::stopGestureRecord,
-            deleteGesture = viewModel::deleteGesture,
             submitGestureCreation = viewModel::submitGestureCreation,
+            updateDialogGestureName = viewModel::updateDialogGestureName,
+            updateDialogGestureDescription = viewModel::updateDialogGestureDescription,
+            canConfirmGestureCreation = viewModel::canConfirmGestureCreation,
+            deleteGesture = viewModel::deleteGesture,
             updateDialogType = viewModel::updateDialogType
         )
 
@@ -90,8 +89,11 @@ fun HomeView(
 private fun SuccessView(
     uiState: HomeViewUiState.Success,
     startGestureRecord: () -> Unit,
-    stopGestureRecord: () -> ArrayList<AccelerometerReading>?,
-    submitGestureCreation: (String, String, List<AccelerometerReading>) -> Unit,
+    stopGestureRecord: () -> Unit,
+    submitGestureCreation: () -> Unit,
+    updateDialogGestureName: (String) -> Unit,
+    updateDialogGestureDescription: (String) -> Unit,
+    canConfirmGestureCreation: () -> Boolean,
     deleteGesture: (Gesture) -> Unit,
     updateDialogType: (HomeViewDialogType) -> Unit,
     modifier: Modifier = Modifier
@@ -128,10 +130,14 @@ private fun SuccessView(
 
     if (uiState.homeViewDialogType == HomeViewDialogType.CREATE_GESTURE) {
         CreateGestureDialog(
+            uiState = uiState,
             onDismiss = { updateDialogType(HomeViewDialogType.NONE) },
             onConfirm = submitGestureCreation,
             startGestureRecord = startGestureRecord,
-            stopGestureRecord = stopGestureRecord
+            stopGestureRecord = stopGestureRecord,
+            updateDialogGestureName = updateDialogGestureName,
+            updateDialogGestureDescription = updateDialogGestureDescription,
+            canConfirmGestureCreation = canConfirmGestureCreation
         )
     }
 }
@@ -243,18 +249,20 @@ private fun GestureCard(
 
 @Composable
 private fun CreateGestureDialog(
+    uiState: HomeViewUiState.Success,
     onDismiss: () -> Unit,
-    onConfirm: (String, String, List<AccelerometerReading>) -> Unit,
+    onConfirm: () -> Unit,
     startGestureRecord: () -> Unit,
-    stopGestureRecord: () -> ArrayList<AccelerometerReading>?,
+    stopGestureRecord: () -> Unit,
+    updateDialogGestureName: (String) -> Unit,
+    updateDialogGestureDescription: (String) -> Unit,
+    canConfirmGestureCreation: () -> Boolean,
     modifier: Modifier = Modifier
 ) {
-    var gestureNameEditValue by remember { mutableStateOf("") }
-    var gestureDescriptionEditValue by remember { mutableStateOf("") }
-    val inputsFilled = gestureNameEditValue.isNotBlank() && gestureDescriptionEditValue.isNotBlank()
+    val textInputsFilled =
+        uiState.gestureDialogInputs.gestureName.isNotBlank() && uiState.gestureDialogInputs.gestureDescription.isNotBlank()
     var isRecording by remember { mutableStateOf(false) }
     var useTimeTickHeavyClick by remember { mutableStateOf(false) }
-    var gestureReadings by remember { mutableStateOf(listOf<AccelerometerReading>()) }
     val context = LocalContext.current
 
     LaunchedEffect(isRecording) {
@@ -297,15 +305,17 @@ private fun CreateGestureDialog(
             }
 
             TextField(
-                value = gestureNameEditValue,
-                onValueChange = { gestureNameEditValue = it },
-                placeholder = { Text(stringResource(R.string.gesture_name_field_label)) }
+                value = uiState.gestureDialogInputs.gestureName,
+                onValueChange = { updateDialogGestureName(it) },
+                placeholder = { Text(stringResource(R.string.gesture_name_field_label)) },
+                singleLine = true
             )
             Spacer(Modifier.height(dimensionResource(R.dimen.padding_small)))
             TextField(
-                value = gestureDescriptionEditValue,
-                onValueChange = { gestureDescriptionEditValue = it },
-                placeholder = { Text(stringResource(R.string.gesture_description_field_label)) }
+                value = uiState.gestureDialogInputs.gestureDescription,
+                onValueChange = { updateDialogGestureDescription(it) },
+                placeholder = { Text(stringResource(R.string.gesture_description_field_label)) },
+                singleLine = true
             )
 
             Row(
@@ -313,64 +323,71 @@ private fun CreateGestureDialog(
                     .align(Alignment.CenterHorizontally)
                     .padding(top = dimensionResource(R.dimen.padding_small))
             ) {
-                FilledIconButton(
+                ConfirmIconButton(
                     onClick = {
-                        onConfirm(
-                            gestureNameEditValue,
-                            gestureDescriptionEditValue,
-                            gestureReadings
-                        )
-                        gestureReadings = listOf()
+                        onConfirm()
+                        onDismiss()
                     },
-                    enabled = inputsFilled && gestureReadings.isNotEmpty(),
-                    colors = IconButtonDefaults.filledIconButtonColors()
-                        .copy(containerColor = ConfirmGreen, contentColor = Color.White),
-                    shape = RoundedCornerShape(dimensionResource(R.dimen.corner_semirounded))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = stringResource(R.string.confirm_button_text)
-                    )
-                }
+                    enabled = canConfirmGestureCreation()
+                )
                 Spacer(Modifier.width(dimensionResource(R.dimen.padding_large)))
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(dimensionResource(R.dimen.record_button_size))
-                        .border(
-                            width = dimensionResource(R.dimen.button_border_width),
-                            shape = CircleShape,
-                            color = if (inputsFilled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.disabled
-                        )
-                        .clip(CircleShape)
-                        .pointerInput(Unit) {
-                            detectTapGestures(
-                                onLongPress = {
-                                    if (inputsFilled) {
-                                        isRecording = true
-                                        startGestureRecord()
-                                    }
-                                },
-                                onPress = {
-                                    if (inputsFilled) {
-                                        tryAwaitRelease()
-                                        HapticsUtils.normalClick(context)
-                                        isRecording = false
-                                        gestureReadings = stopGestureRecord() ?: arrayListOf()
-                                    }
-                                }
-                            )
-                        }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.FiberManualRecord,
-                        contentDescription = stringResource(R.string.record_gesture),
-                        modifier = Modifier.size(dimensionResource(R.dimen.button_icon_size)),
-                        tint = if (inputsFilled) Color.Red else Color.Red.disabled
-                    )
-                }
+                GestureRecordButton(
+                    startGestureRecord = {
+                        startGestureRecord()
+                        isRecording = true
+                    },
+                    stopGestureRecord = {
+                        stopGestureRecord()
+                        isRecording = false
+                    },
+                    enabled = textInputsFilled
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun GestureRecordButton(
+    startGestureRecord: () -> Unit,
+    stopGestureRecord: () -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .size(dimensionResource(R.dimen.record_button_size))
+            .border(
+                width = dimensionResource(R.dimen.button_border_width),
+                shape = CircleShape,
+                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.disabled
+            )
+            .clip(CircleShape)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onLongPress = {
+                        if (enabled) {
+                            startGestureRecord()
+                        }
+                    },
+                    onPress = {
+                        if (enabled) {
+                            tryAwaitRelease()
+                            HapticsUtils.normalClick(context)
+                            stopGestureRecord()
+                        }
+                    }
+                )
+            }
+    ) {
+        Icon(
+            imageVector = Icons.Default.FiberManualRecord,
+            contentDescription = stringResource(R.string.record_gesture),
+            modifier = Modifier.size(dimensionResource(R.dimen.button_icon_size)),
+            tint = if (enabled) Color.Red else Color.Red.disabled
+        )
     }
 }
 
@@ -401,20 +418,9 @@ private fun DeleteGestureDialog(
             Row(
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {
-                TextButton(
-                    onClick = {
-                        onConfirm()
-                        onDismiss()
-                    }
-                ) {
-                    Text(stringResource(R.string.confirm_button_text))
-                }
+                DismissIconButton(onClick = onDismiss)
                 Spacer(Modifier.width(dimensionResource(R.dimen.padding_large)))
-                TextButton(
-                    onClick = onDismiss
-                ) {
-                    Text(stringResource(R.string.dismiss_button_text))
-                }
+                ConfirmIconButton(onClick = onConfirm)
             }
         }
     }
