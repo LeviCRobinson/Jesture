@@ -32,7 +32,8 @@ sealed interface HomeViewUiState {
     data class Success(
         val gestures: List<Gesture>? = null,
         val homeViewDialogType: HomeViewDialogType = HomeViewDialogType.NONE,
-        val gestureDialogInputs: GestureDialogInputs = GestureDialogInputs()
+        val gestureDialogInputs: GestureDialogInputs = GestureDialogInputs(),
+        val gestureReadings: List<AccelerometerReading>? = null
     ) : HomeViewUiState
 
     data object Error : HomeViewUiState
@@ -125,7 +126,7 @@ class HomeViewModel @Inject constructor(
                 val response = gestureUseCases.createGesture(
                     currentState.gestureDialogInputs.gestureName,
                     currentState.gestureDialogInputs.gestureDescription,
-                    currentState.gestureDialogInputs.gestureReadings ?: arrayListOf()
+                    currentState.gestureReadings ?: arrayListOf()
                 )
                 response?.let {
                     // On response, set dialog inputs and gesture readings to default state.
@@ -153,7 +154,8 @@ class HomeViewModel @Inject constructor(
                 if (dialogType == HomeViewDialogType.NONE) {
                     _readings = null
                     updatedState = updatedState.copy(
-                        gestureDialogInputs = GestureDialogInputs()
+                        gestureDialogInputs = GestureDialogInputs(),
+                        gestureReadings = null
                     )
                 }
 
@@ -201,11 +203,7 @@ class HomeViewModel @Inject constructor(
                 // Stop recording accelerometer readings
                 stopGestureRecordUseCase()
                 // Update UI State to included recorded readings now that recording is done.
-                _uiState.value = currentState.copy(
-                    gestureDialogInputs = currentState.gestureDialogInputs.copy(
-                        gestureReadings = _readings
-                    )
-                )
+                _uiState.value = currentState.copy(gestureReadings = _readings)
                 // Reset readings to null
                 _readings = null
             }
@@ -217,7 +215,7 @@ class HomeViewModel @Inject constructor(
         return if (currentState is HomeViewUiState.Success) {
             currentState.gestureDialogInputs.gestureName.isNotBlank() &&
                     currentState.gestureDialogInputs.gestureDescription.isNotBlank() &&
-                    !currentState.gestureDialogInputs.gestureReadings.isNullOrEmpty()
+                    !currentState.gestureReadings.isNullOrEmpty()
         } else {
             false
         }
@@ -243,6 +241,5 @@ enum class HomeViewDialogType {
 
 data class GestureDialogInputs(
     val gestureName: String = "",
-    val gestureDescription: String = "",
-    val gestureReadings: ArrayList<AccelerometerReading>? = null
+    val gestureDescription: String = ""
 )
