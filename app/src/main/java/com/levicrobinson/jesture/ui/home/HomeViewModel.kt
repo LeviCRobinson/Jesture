@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.math.min
 
 sealed interface HomeViewUiState {
     data class Success(
@@ -185,7 +186,7 @@ class HomeViewModel @Inject constructor(
         val currentState = _uiState.value
         if (currentState is HomeViewUiState.Success) {
             val newGestureRecordInputs = currentState.gestureDialogInputs.copy(
-                gestureName = gestureName
+                gestureName = gestureName.substring(0, min(gestureName.length, 11))
             )
             _uiState.value = currentState.copy(
                 gestureDialogInputs = newGestureRecordInputs

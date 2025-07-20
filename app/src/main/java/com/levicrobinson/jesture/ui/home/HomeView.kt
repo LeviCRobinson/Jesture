@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -48,6 +49,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -60,6 +63,7 @@ import com.levicrobinson.jesture.ui.common.composables.LoadingStateView
 import com.levicrobinson.jesture.ui.utils.HapticsUtils
 import com.levicrobinson.jesture.ui.utils.disabled
 import kotlinx.coroutines.delay
+import kotlin.coroutines.cancellation.CancellationException
 
 @Composable
 fun HomeView(
@@ -123,7 +127,8 @@ private fun SuccessView(
                         stopGestureRecord()
                         submitGestureRecognition(context)
                     },
-                    enabled = true
+                    enabled = true,
+                    modifier = Modifier.size(dimensionResource(R.dimen.large_record_button_size))
                 )
                 Spacer(Modifier.height(dimensionResource(R.dimen.padding_large)))
             }
@@ -237,9 +242,10 @@ private fun GestureCard(
         ) {
             Text(
                 gesture.name,
-                modifier = Modifier.weight(0.4f)
+                modifier = Modifier.weight(0.8f),
+                overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.weight(0.6f))
+            Spacer(modifier = Modifier.weight(0.2f))
             IconButton(
                 onClick = {
                     gestureIdToDelete = gesture.id
@@ -328,14 +334,16 @@ private fun CreateGestureDialog(
                 value = uiState.gestureDialogInputs.gestureName,
                 onValueChange = { updateDialogGestureName(it) },
                 placeholder = { Text(stringResource(R.string.gesture_name_field_label)) },
-                singleLine = true
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
             )
             Spacer(Modifier.height(dimensionResource(R.dimen.padding_small)))
             TextField(
                 value = uiState.gestureDialogInputs.gestureDescription,
                 onValueChange = { updateDialogGestureDescription(it) },
                 placeholder = { Text(stringResource(R.string.gesture_description_field_label)) },
-                singleLine = true
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
             )
 
             Row(
@@ -361,6 +369,14 @@ private fun CreateGestureDialog(
     }
 }
 
+/**
+ * A button that denotes the beginning and end of an accelerometer recording.  When pressed, gesture
+ * record will begin, and when the button is released, gesture record will stop.  This will also trigger
+ * timing haptics to give the user a sense of how long the gesture is.
+ * @param startGestureRecord - Function called to begin gesture recording
+ * @param stopGestureRecord - Function called to stop gesture recording
+ * @param enabled - Whether the button is enabled or not; also changes styling.
+ */
 @Composable
 private fun GestureRecordButton(
     startGestureRecord: () -> Unit,
@@ -396,18 +412,23 @@ private fun GestureRecordButton(
             .clip(CircleShape)
             .pointerInput(Unit) {
                 detectTapGestures(
-                    onLongPress = {
+                    onPress = {
+                        // Begins gesture record on press
                         if (enabled) {
                             startGestureRecord()
                             isRecording = true
-                        }
-                    },
-                    onPress = {
-                        if (enabled) {
-                            tryAwaitRelease()
-                            HapticsUtils.normalClick(context)
-                            stopGestureRecord()
-                            isRecording = false
+
+                            // When released, gesture record ends.
+                            val released = try {
+                                tryAwaitRelease()
+                            } catch (_: CancellationException) {
+                                false
+                            }
+                            if (released) {
+                                HapticsUtils.normalClick(context)
+                                stopGestureRecord()
+                                isRecording = false
+                            }
                         }
                     }
                 )
