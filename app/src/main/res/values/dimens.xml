@@ -11,4 +11,5 @@
     <dimen name="record_button_size">48dp</dimen>
     <dimen name="button_icon_size">24dp</dimen>
     <dimen name="corner_semirounded">8dp</dimen>
+    <dimen name="large_record_button_size">60dp</dimen>
 </resources>
