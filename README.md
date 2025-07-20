@@ -7,10 +7,12 @@ Jesture is simply a Proof-of-concept and portfolio piece, and Jesture's gesture 
 
 ## Features/Technologies
 - Gesture recognition via backend API
+- GraphQL APIs implemented using Retrofit
 - Clean Architecture (separated by domain, data, and presentation layers)
 - Dependency Injection using Hilt
 - MVVM architecture
 - Sensor stream handling (Specifically, accelerometer readings)
+- UI Implemented using Jetpack Compose
 
 ---
 Feel free to reach out if you’re a recruiter or developer interested in discussing the project. I'm happy to walk through the architecture, design decisions, and implementation.
